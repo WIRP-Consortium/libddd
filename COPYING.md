@@ -17,9 +17,9 @@ By choosing one of the above licenses, you agree to comply with the terms and co
 The complete license texts are provided in the following files:
 
 ```
-LICENSE-MIT
-LICENSE-UNLICENSE
-LICENSE-WPSL-OS
+license - MIT License
+LICENSE - The Unlicense
+LICENSE.txt - WPSL-OS
 ```
 
 If a copy of the license texts is not included with this distribution, they should be obtained from their respective official sources before using this software.
