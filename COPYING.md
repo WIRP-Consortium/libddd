@@ -1,6 +1,6 @@
 # COPYING
 
-Internet Data Transmission Protocol (IDTP)
+Internet Data Transmission Protocol (IDTP) & libddd
 
 Copyright (c) 2026
 
