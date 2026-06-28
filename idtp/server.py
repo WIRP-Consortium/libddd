@@ -18,13 +18,71 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pathlib import Path
 
-HOST = "0.0.0.0"
-PORT = 443
-VERSION = "0.01"
-TYPE = "RETURN"
+CONFIG_FILE = "idtpd.conf"
 
-DATA_DIR = "data"
-INDEX_DIR = os.path.join(DATA_DIR, "indexes")
+
+def load_config(path):
+    config = {}
+
+    if not os.path.exists(path):
+        print("[!] Config not found, using defaults")
+        return config
+
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith("#"):
+                continue
+
+            key, value = line.split(None, 1)
+
+            value = value.strip()
+
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+
+            config[key] = value
+
+    return config
+
+CONFIG = load_config("idtpd.conf")
+
+
+HOST = CONFIG.get(
+    "BindAddress",
+    "0.0.0.0"
+)
+
+PORT = int(CONFIG.get(
+    "Listen",
+    443
+))
+
+VERSION = CONFIG.get(
+    "Version",
+    "0.01"
+)
+
+
+DATA_DIR = CONFIG.get(
+    "DataDirectory",
+    "./data"
+)
+
+INDEX_DIR = CONFIG.get(
+    "IndexDirectory",
+    "./data/indexes"
+)
+
+
+NONCE_TTL = int(CONFIG.get(
+    "NonceTTL",
+    300
+))
 
 AGENT = "WIRP idtpd Version 0.01"
 
@@ -91,6 +149,7 @@ def load_all_data():
 def is_replay(nonce):
     now = time.time()
 
+    # cleanup expired
     expired = [n for n, t in nonce_store.items() if now - t > NONCE_TTL]
     for n in expired:
         del nonce_store[n]
@@ -372,6 +431,7 @@ def handle_client(conn, addr):
                     private_key.encode("utf-8"),
                     password=None
                 )
+
                 parts = body.split("|")
                 if len(parts) != 3:
                     print("[!] Invalid packet format")
@@ -456,7 +516,7 @@ def handle_client(conn, addr):
                 print("\n----- DATA -----")
                 print(plaintext.decode("utf-8", errors="ignore"))
                 print("Registrant:", registrant)
-          
+                
                 response_key = os.urandom(32)
                 response_iv = os.urandom(12)
 
@@ -492,10 +552,13 @@ DATA:
                     + base64.b64encode(encrypted_response).decode()
                 )
 
+                #client.send(str(idtp_return).encode())
                 conn.sendall(packet.encode())
             except Exception as e:
                 print("[!] Decryption error:", e)
                 send_error(conn, 129, "DECRYPTION ERROR")
+
+            #conn.sendall(b"ACK")
 
     except ConnectionResetError:
         print(f"[!] Client closed connection: {addr}")
