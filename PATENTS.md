@@ -5,3 +5,5 @@ In addition to dedicating this software to the public domain under The Unlicense
 This waiver is perpetual, worldwide, irrevocable, royalty-free, and applies to all recipients of this software.
 
 Nothing in this waiver grants rights under patents owned or controlled by third parties.
+
+in 30/6/2026
