@@ -72,13 +72,23 @@ from PyQt6.QtWidgets import QToolButton, QMenu
 PORT = 443
 VERSION = "0.01"
 TYPE = "DATA"
+PORT2 = 443
 
 HOST = "0.0.0.0"
 CLIENT = "WWC SCRUTARI"
+#HOST = "127.0.0.1"
 
 REGISTRY_FILE = os.path.join("data", "registry.dat")
 
 CACHE_DIR = "cache"
+
+CERT_FILE = "idtpd.crt"
+
+tls_context = ssl.create_default_context()
+
+# for self-signed certificate
+tls_context.check_hostname = False
+tls_context.verify_mode = ssl.CERT_NONE
 
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -90,7 +100,8 @@ with open("keys/private.pem", "rb") as f:
 
 with open("keys/public.pem", "rb") as f:
     my_public_key = f.read().decode("utf-8")
-  
+
+# Get public IP
 ipa = requests.get("https://api.ipify.org").text.strip()
 
 def idtp_packet(ver, msg_type, ich, to, ip_addr,
@@ -135,6 +146,7 @@ def parse_response(response):
 
     encrypted_key_b64, iv_b64, encrypted_data_b64 = parts
 
+    # decrypt AES key
     aes_key = private_key.decrypt(
         base64.b64decode(encrypted_key_b64),
         padding.OAEP(
@@ -185,48 +197,71 @@ def parse_response(response):
 
 def try_send(ip, packet):
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as peer:
-            peer.settimeout(5)
+        raw_socket = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        )
 
-            peer.connect((ip, PORT))
+        raw_socket.settimeout(5)
 
-            peer.sendall(packet.encode("utf-8"))
+        print(f"Connecting TLS to {ip}:{PORT}")
 
-            raw = recv_all(peer)
+        raw_socket.connect((ip, PORT))
 
-            if not raw:
-                return False
+        conn = tls_context.wrap_socket(
+            raw_socket,
+            server_hostname=ip
+        )
 
-            response = raw.decode("utf-8", errors="ignore")
+        print(
+            "TLS version:",
+            conn.version()
+        )
 
-            print(response)
-            
+        conn.sendall(
+            packet.encode("utf-8")
+        )
 
-            parsed = parse_response(response)
+        raw = recv_all(conn)
 
-            print("TYPE:", parsed.get("TYPE"))
-            print("RESOURCE:", parsed.get("RESOURCE"))
-            print("DATA:", parsed.get("DATA"))
+        conn.close()
 
-            return parsed
+        if not raw:
+            return False
+
+        response = raw.decode(
+            "utf-8",
+            errors="ignore"
+        )
+
+        parsed = parse_response(response)
+
+        print("TYPE:", parsed.get("TYPE"))
+        print("RESOURCE:", parsed.get("RESOURCE"))
+        print("DATA:", parsed.get("DATA"))
+
+        return parsed
+
+
+    except ssl.SSLError as e:
+        print("TLS error:", e)
+        return False
+
 
     except socket.timeout:
-        print("Connection timed out (server did not reply)")
+        print("Timeout")
         return False
 
-    except ConnectionRefusedError:
-        print("Connection refused")
-        return False
 
     except Exception as e:
-        print("Direct P2P failed")
-        print("Reason:", e)
+        print("Connection failed:", e)
         return False
 
 def recv_all(conn, key):
     filename = hashlib.sha256(key.encode()).hexdigest()
     path = os.path.join(CACHE_DIR, filename)
 
+    # return cached copy if it exists
     if os.path.exists(path):
         print("Cache hit")
         with open(path, "rb") as f:
@@ -234,6 +269,7 @@ def recv_all(conn, key):
 
     print("Cache miss - receiving")
 
+    # receive and save
     with open(path, "wb") as f:
         while True:
             chunk = conn.recv(1024 * 1024)  # 1 MB
@@ -241,6 +277,7 @@ def recv_all(conn, key):
                 break
             f.write(chunk)
 
+    # load if needed
     with open(path, "rb") as f:
         return f.read()
 
@@ -320,10 +357,12 @@ def main(name, msg, method):
         registered_name = result_data.get("fullname")
         ich = result_data.get("ich", "UNKNOWN")
         public_key_txt = result_data.get("public_key", "UNKNOWN")
-        destination_ip = result_data.get("ip")
+            #destination_ip = result_data.get("ip")
+        destination_ip = "192.168.1.8"
 
         timestamp = time.time()
 
+            #nonce = hashlib.sha256(secrets.token_bytes(128)).hexdigest()[:32]
         nonce = secrets.token_hex(16)
 
         body = enc_aes_key_b64 + "|" + base64.b64encode(iv).decode() + "|" + encrypted_msg
@@ -397,6 +436,7 @@ class EditApp(QMainWindow):
         self.history = []
         self.forward_history = []
         self.current_page = None
+        self.title = QLabel("")
 
         self.setWindowTitle("WWC Scrutari")
         self.resize(1280, 720)
@@ -469,6 +509,7 @@ class EditApp(QMainWindow):
         forward_button.setMaximumWidth(80)
 
         more_button = QToolButton()
+        #more_button.setText("⋮")
         more_button.setText("More")
 
         menu = QMenu()
@@ -485,8 +526,10 @@ class EditApp(QMainWindow):
         more_button.setMenu(menu)
         more_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
+        #layout.addWidget(label)
         top_layout = QHBoxLayout()
-      
+
+        #top_layout.addWidget(connection)
         top_layout.addWidget(back_button)
         top_layout.addWidget(forward_button)
         top_layout.addWidget(refresh_button)
@@ -494,6 +537,17 @@ class EditApp(QMainWindow):
         top_layout.addWidget(more_button)
 
         layout.addLayout(top_layout)
+
+        #layout.addWidget(mesg)
+        #layout.addWidget(self.msg)
+
+        #layout.addWidget(fl_method)
+        #layout.addWidget(self.method)
+        
+        #layout.addWidget(send_button)
+        #send_button.clicked.connect(self.send)
+        
+        #layout.addWidget(self.title)
 
         layout.addWidget(line)
 
@@ -624,6 +678,8 @@ class EditApp(QMainWindow):
                     "font-size:20px;font-weight:bold;"
                 )
 
+            elif tag == "title":
+                self.title.setText(value)
 
             elif tag == "link":
 
@@ -661,6 +717,7 @@ class EditApp(QMainWindow):
                 item = self.output_layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
+            #self.output.setText(response.get("DATA", "No data"))
 
             data = response.get("DATA", "")
             resor = response.get("RESOURCE", "")
@@ -677,6 +734,7 @@ class EditApp(QMainWindow):
 
             if ext == "smrl":
 
+    # clean root wrapper safely
                 data = data.replace("<smrl>", "").replace("</smrl>", "").strip()
 
                 try:
@@ -687,11 +745,13 @@ class EditApp(QMainWindow):
                 if root is None:
                     return
 
+    # clear layout
                 while self.output_layout.count():
                     item = self.output_layout.takeAt(0)
                     if item.widget():
                         item.widget().deleteLater()
 
+    # read in order as it appears in XML
                 for elem in root:
                     tag = elem.tag.lower()
                     value = (elem.text or "").strip()
@@ -705,6 +765,9 @@ class EditApp(QMainWindow):
                     if tag == "head1":
                         lbl.setStyleSheet("font-size:20px; font-weight:bold;")
                         lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+                    elif tag == "title":
+                        self.title.setText(value)
 
                     elif tag == "link":
                         redir = elem.attrib.get("redir")
@@ -878,15 +941,18 @@ class EditApp(QMainWindow):
 
         ms.setText(
             "About PyQt\n\n"
-            "This program uses PyQt6\n\n"
-            "PyQt is a set of Python bindings for the Qt framework "
-            "that allows developers to build powerful, cross-platform "
-            "desktop applications with modern graphical user interfaces. "
-            "It provides tools for creating windows, buttons, dialogs, "
-            "and advanced UI components with ease, combining Python’s "
-            "simplicity with Qt’s performance and flexibility."
-            "\n\n(C)Copyright Riverbank Computing Limited & Phil Thompson\n\n"
-            "PyQt & PyQt logo are Trademark of Riverbank Computing Limited"
+            "This program uses PyQt6.\n\n"
+            "PyQt is a set of Python bindings for the Qt application framework. "
+            "It enables the development of cross-platform desktop applications "
+            "using Python and provides access to the full range of Qt libraries "
+            "for creating modern graphical user interfaces.\n\n"
+            "PyQt is developed and maintained by Riverbank Computing Limited and "
+            "is available under both commercial and GNU GPL licensing terms.\n\n"
+            "For more information about PyQt, visit:\n"
+            "https://www.riverbankcomputing.com/software/pyqt/\n\n"
+            "Copyright © Riverbank Computing Limited and other contributors.\n\n"
+            "PyQt is a trademark of Riverbank Computing Limited. "
+            "Qt and the Qt logo are trademarks of The Qt Company Ltd."
         )
 
         pixmap = QPixmap("pyqt.png")
