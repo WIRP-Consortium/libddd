@@ -20,6 +20,21 @@ from pathlib import Path
 
 CONFIG_FILE = "idtpd.conf"
 
+CERT_FILE = "idtpd.crt"
+KEY_FILE = "idtpd.key"
+
+
+tls_context = ssl.SSLContext(
+    ssl.PROTOCOL_TLS_SERVER
+)
+
+tls_context.load_cert_chain(
+    certfile=CERT_FILE,
+    keyfile=KEY_FILE
+)
+
+tls_context.minimum_version = ssl.TLSVersion.TLSv1_3
+
 
 def load_config(path):
     config = {}
@@ -384,6 +399,17 @@ def handle_client(conn, addr):
 
             data_to_sign = nonce + "|" + str(timestamp) + "|" + body
 
+            parts = registrant.rsplit(".", 1)
+
+            name = parts[0]
+            extension = parts[1] if len(parts) > 1 else ""
+
+            count = len(name)
+
+            if count < 32:
+                send_error(conn, 208, "Less Than 32 character")
+                return
+
             if not chk_value:
                 print("[!]NO CHECKSUM")
                 send_error(conn, 101, "NO CHECKSUM")
@@ -413,6 +439,7 @@ def handle_client(conn, addr):
             print(f"ich: {ich}")
             print(f"ip: {destination_ip}")
             print(f"FOLDER: {folder}")
+            #print(f"FILE: {route}")
 
             registrant = header.get("REGISTRANT", "").strip()
 
@@ -431,6 +458,10 @@ def handle_client(conn, addr):
                     private_key.encode("utf-8"),
                     password=None
                 )
+
+                # ---------------- NEW FIELDS EXPECTED FROM CLIENT ----------------
+                # body format now expected:
+                # enc_key_b64|iv_b64|ciphertext_b64
 
                 parts = body.split("|")
                 if len(parts) != 3:
@@ -516,7 +547,14 @@ def handle_client(conn, addr):
                 print("\n----- DATA -----")
                 print(plaintext.decode("utf-8", errors="ignore"))
                 print("Registrant:", registrant)
-                
+                #print(f"CONTENT : {content}")
+
+                #print("\n-----FILE CONTAIN------\n")
+                #print(f"{content}")
+                #print("\n")
+
+#client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#client.connect((dest_ip, PORT2))
                 response_key = os.urandom(32)
                 response_iv = os.urandom(12)
 
@@ -586,7 +624,20 @@ def main():
 
     try:
         while True:
-            conn, addr = server.accept()
+            raw_conn, addr = server.accept()
+
+            try:
+                conn = tls_context.wrap_socket(
+                    raw_conn,
+                        server_side=True
+                    )
+
+                print("[+] TLS connection:", addr)
+
+            except ssl.SSLError as e:
+                print("[!] TLS handshake failed:", e)
+                raw_conn.close()
+                continue
 
             thread = threading.Thread(
                 target=handle_client,
