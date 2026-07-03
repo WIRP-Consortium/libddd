@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="idtp.png" alt="Internet Data Transmission Protocol" width="900">
+  <img src="C:\wddd\GARN\WRS\assets\idtp.png" alt="Internet Data Transmission Protocol" width="900">
 </p>
 # Internet Data Transmission Protocol (IDTP)
 
