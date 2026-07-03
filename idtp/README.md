@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="idtp.png" alt="Internet Data Transmission Protocol" width="900">
+</p>
 # Internet Data Transmission Protocol (IDTP)
 
 <p align="center">
