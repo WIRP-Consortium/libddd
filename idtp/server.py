@@ -439,7 +439,6 @@ def handle_client(conn, addr):
             print(f"ich: {ich}")
             print(f"ip: {destination_ip}")
             print(f"FOLDER: {folder}")
-            #print(f"FILE: {route}")
 
             registrant = header.get("REGISTRANT", "").strip()
 
@@ -458,10 +457,6 @@ def handle_client(conn, addr):
                     private_key.encode("utf-8"),
                     password=None
                 )
-
-                # ---------------- NEW FIELDS EXPECTED FROM CLIENT ----------------
-                # body format now expected:
-                # enc_key_b64|iv_b64|ciphertext_b64
 
                 parts = body.split("|")
                 if len(parts) != 3:
@@ -547,14 +542,6 @@ def handle_client(conn, addr):
                 print("\n----- DATA -----")
                 print(plaintext.decode("utf-8", errors="ignore"))
                 print("Registrant:", registrant)
-                #print(f"CONTENT : {content}")
-
-                #print("\n-----FILE CONTAIN------\n")
-                #print(f"{content}")
-                #print("\n")
-
-#client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#client.connect((dest_ip, PORT2))
                 response_key = os.urandom(32)
                 response_iv = os.urandom(12)
 
@@ -590,13 +577,10 @@ DATA:
                     + base64.b64encode(encrypted_response).decode()
                 )
 
-                #client.send(str(idtp_return).encode())
                 conn.sendall(packet.encode())
             except Exception as e:
                 print("[!] Decryption error:", e)
                 send_error(conn, 129, "DECRYPTION ERROR")
-
-            #conn.sendall(b"ACK")
 
     except ConnectionResetError:
         print(f"[!] Client closed connection: {addr}")
