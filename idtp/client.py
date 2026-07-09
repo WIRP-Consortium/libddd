@@ -68,6 +68,7 @@ from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtGui import QTextFormat
 from PyQt6.QtWidgets import QTextBrowser
 from PyQt6.QtWidgets import QToolButton, QMenu
+from Crypto.PublicKey import RSA
 
 PORT = 443
 VERSION = "0.01"
@@ -76,7 +77,6 @@ PORT2 = 443
 
 HOST = "0.0.0.0"
 CLIENT = "WWC SCRUTARI"
-#HOST = "127.0.0.1"
 
 REGISTRY_FILE = os.path.join("data", "registry.dat")
 
@@ -84,21 +84,39 @@ CACHE_DIR = "cache"
 
 CERT_FILE = "idtpd.crt"
 
+PRIVATE_PEM = "keys/private.pem"
+PUBLIC_PEM = "keys/public.pem"
+
 tls_context = ssl.create_default_context()
 
 # for self-signed certificate
 tls_context.check_hostname = False
 tls_context.verify_mode = ssl.CERT_NONE
 
-os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs("keys", exist_ok=True)
 
-with open("keys/private.pem", "rb") as f:
+os.makedirs(CACHE_DIR, exist_ok=True)
+if not os.path.exists(PRIVATE_PEM) and not os.path.exists(PUBLIC_PEM):
+    key = RSA.generate(3072)
+
+    private_key = key.export_key()
+    public_key = key.publickey().export_key()
+
+# Save keys to files
+    with open("keys/private.pem", "wb") as f:
+        f.write(private_key)
+
+    with open("keys/public.pem", "wb") as f:
+        f.write(public_key)
+
+with open(PRIVATE_PEM, "rb") as f:
     private_key = serialization.load_pem_private_key(
         f.read(),
-        password=None
+        password=None,
     )
 
-with open("keys/public.pem", "rb") as f:
+# Load public key
+with open(PUBLIC_PEM, "rb") as f:
     my_public_key = f.read().decode("utf-8")
 
 # Get public IP
@@ -357,12 +375,10 @@ def main(name, msg, method):
         registered_name = result_data.get("fullname")
         ich = result_data.get("ich", "UNKNOWN")
         public_key_txt = result_data.get("public_key", "UNKNOWN")
-            #destination_ip = result_data.get("ip")
-        destination_ip = "192.168.1.8"
+        destination_ip = result_data.get("ip")
 
         timestamp = time.time()
 
-            #nonce = hashlib.sha256(secrets.token_bytes(128)).hexdigest()[:32]
         nonce = secrets.token_hex(16)
 
         body = enc_aes_key_b64 + "|" + base64.b64encode(iv).decode() + "|" + encrypted_msg
@@ -509,7 +525,6 @@ class EditApp(QMainWindow):
         forward_button.setMaximumWidth(80)
 
         more_button = QToolButton()
-        #more_button.setText("⋮")
         more_button.setText("More")
 
         menu = QMenu()
@@ -526,10 +541,8 @@ class EditApp(QMainWindow):
         more_button.setMenu(menu)
         more_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
-        #layout.addWidget(label)
         top_layout = QHBoxLayout()
 
-        #top_layout.addWidget(connection)
         top_layout.addWidget(back_button)
         top_layout.addWidget(forward_button)
         top_layout.addWidget(refresh_button)
@@ -537,17 +550,6 @@ class EditApp(QMainWindow):
         top_layout.addWidget(more_button)
 
         layout.addLayout(top_layout)
-
-        #layout.addWidget(mesg)
-        #layout.addWidget(self.msg)
-
-        #layout.addWidget(fl_method)
-        #layout.addWidget(self.method)
-        
-        #layout.addWidget(send_button)
-        #send_button.clicked.connect(self.send)
-        
-        #layout.addWidget(self.title)
 
         layout.addWidget(line)
 
@@ -717,7 +719,6 @@ class EditApp(QMainWindow):
                 item = self.output_layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
-            #self.output.setText(response.get("DATA", "No data"))
 
             data = response.get("DATA", "")
             resor = response.get("RESOURCE", "")
@@ -734,7 +735,6 @@ class EditApp(QMainWindow):
 
             if ext == "smrl":
 
-    # clean root wrapper safely
                 data = data.replace("<smrl>", "").replace("</smrl>", "").strip()
 
                 try:
@@ -745,13 +745,11 @@ class EditApp(QMainWindow):
                 if root is None:
                     return
 
-    # clear layout
                 while self.output_layout.count():
                     item = self.output_layout.takeAt(0)
                     if item.widget():
                         item.widget().deleteLater()
 
-    # read in order as it appears in XML
                 for elem in root:
                     tag = elem.tag.lower()
                     value = (elem.text or "").strip()
@@ -805,7 +803,7 @@ class EditApp(QMainWindow):
             "Your data is encrypted"
         )
 
-        pixmap = QPixmap("wd3_2.png")
+        pixmap = QPixmap("assets/wd3_2.png")
 
         if pixmap.isNull():
             msg.setIcon(QMessageBox.Icon.Information)
@@ -897,7 +895,7 @@ class EditApp(QMainWindow):
 
         )
 
-        pixmap = QPixmap("wd3_2.png")
+        pixmap = QPixmap("assets/wd3_2.png")
 
         if pixmap.isNull():
             msg.setIcon(QMessageBox.Icon.Information)
@@ -955,7 +953,7 @@ class EditApp(QMainWindow):
             "Qt and the Qt logo are trademarks of The Qt Company Ltd."
         )
 
-        pixmap = QPixmap("pyqt.png")
+        pixmap = QPixmap("assets/pyqt.png")
 
         if pixmap.isNull():
             ms.setIcon(QMessageBox.Icon.Information)
