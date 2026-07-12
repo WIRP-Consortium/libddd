@@ -137,27 +137,41 @@ def try_send(ip, packet):
 def load_all_data():
     results = []
 
+    print("INDEX DIR =", INDEX_DIR)
+
     if not os.path.exists(INDEX_DIR):
+        print("INDEX DIRECTORY NOT FOUND")
         return results
 
+    print("FILES =", os.listdir(INDEX_DIR))
+
     for file in os.listdir(INDEX_DIR):
+
         if file.endswith(".dat"):
+
+            print("READING FILE:", file)
+
             file_path = os.path.join(INDEX_DIR, file)
 
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
+                print("FULLNAME:", data.get("fullname"))
+                print("RSA KEY:", bool(data.get("asymmetric_private")))
+
                 results.append({
                     "fullname": data.get("fullname"),
                     "folder": data.get("folder"),
                     "primary_file": data.get("primary_file"),
-                    "private_key": data.get("asymmetric_private"),
-                    "public_key": data.get("asymmetric_public")
+                    "private_key": data.get("asymmetric_private") or data.get("private_key"),
+                    "public_key": data.get("asymmetric_public") or data.get("public_key"),
                 })
 
             except Exception as e:
-                print(f"Failed reading {file}: {e}")
+                print("READ ERROR:", e)
+
+    print("TOTAL LOADED:", len(results))
 
     return results
 
@@ -223,15 +237,24 @@ def get_file(registrant):
     return None
 
 def get_key_by_registrant(registrant):
-    if not registrant:
-        return None
+
+    print("SEARCHING KEY FOR:")
+    print(repr(registrant))
 
     data_list = load_all_data()
 
+    print("INDEX RECORDS FOUND:", len(data_list))
+
     for item in data_list:
-        if item.get("fullname", "").strip() == registrant.strip():
+        print("AVAILABLE:")
+        print(repr(item.get("fullname")))
+
+        if item.get("fullname","").strip() == registrant.strip():
+            print("MATCH FOUND")
+            print("KEY EXISTS:", bool(item.get("private_key")))
             return item.get("private_key")
 
+    print("NO MATCH")
     return None
 
 def idtp_packet(ver, msg_type, to, ip_addr,
@@ -375,6 +398,13 @@ def handle_client(conn, addr):
                 return
             
             registrant = header.get("REGISTRANT", "").strip()
+            print("CLIENT SENT REGISTRANT:")
+            print(repr(registrant))
+
+            print("AVAILABLE REGISTRANTS:")
+            for x in load_all_data():
+                print(repr(x.get("fullname")))
+                
             public_key = get_publickey(registrant)
             folder = get_folder(registrant)
             file_path = get_file(registrant)
@@ -542,6 +572,7 @@ def handle_client(conn, addr):
                 print("\n----- DATA -----")
                 print(plaintext.decode("utf-8", errors="ignore"))
                 print("Registrant:", registrant)
+  
                 response_key = os.urandom(32)
                 response_iv = os.urandom(12)
 
@@ -576,7 +607,6 @@ DATA:
                     + "|"
                     + base64.b64encode(encrypted_response).decode()
                 )
-
                 conn.sendall(packet.encode())
             except Exception as e:
                 print("[!] Decryption error:", e)
