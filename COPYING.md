@@ -1,47 +1,43 @@
-# COPYING
+WIRP Permissive Software License (WPSL-OS)
 
-Internet Data Transmission Protocol (IDTP) & libddd
+Version 1.0 — 18 June 2026
+Copyright © 2026 World Internet Rules & Protocol
 
-Copyright (c) 2026
+1. Preamble
 
-This project is made available under a **multi-license** model.
+This license is a permissive free software license that allows users to freely use, modify, and distribute software while preserving copyright notice and disclaimer requirements.
 
-You may use, copy, modify, distribute, and/or redistribute this software under **any one** of the following licenses, at your option:
+2. Permission Grant
 
-* MIT License
-* The Unlicense
-* WPSL-OS (Open Source License)
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to:
 
-By choosing one of the above licenses, you agree to comply with the terms and conditions of that license.
+use
+copy
+modify
+merge
+publish
+distribute
+sublicense
+and/or sell copies of the Software
 
-The complete license texts are provided in the following files:
+and to permit persons to whom the Software is furnished to do so, subject to the conditions below.
 
-```
-license - MIT License
-LICENSE - The Unlicense
-LICENSE.txt - WPSL-OS
-```
+3. Conditions for Redistribution
 
-If a copy of the license texts is not included with this distribution, they should be obtained from their respective official sources before using this software.
+All copies or substantial portions of the Software must include:
 
-Unless required by applicable law or agreed to in writing, this software is distributed **"AS IS"**, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+the above copyright notice, and
+this permission notice
+4. Disclaimer of Warranty
 
----
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 
-## License Summary
+5. Limitation of Liability
 
-### MIT License
+IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-A permissive free software license allowing commercial use, modification, distribution, and private use, provided that the copyright notice and license are included in substantial portions of the software.
+6. License Text Usage
 
-### The Unlicense
+This license text may be copied and included in software distributions without modification, provided it is reproduced in full and retains its original attribution.
 
-This software is dedicated to the public domain to the fullest extent permitted by law. Where public domain dedication is not recognized, it is licensed under the fallback terms of The Unlicense.
-
-### WPSL-OS
-
-This project may also be used under the terms of the WPSL-OS license. Refer to the accompanying `LICENSE-WPSL-OS` file for the complete terms and conditions.
-
----
-
-For questions regarding licensing, please contact the project maintainer or open an issue in the project repository.
+END OF LICENSE
