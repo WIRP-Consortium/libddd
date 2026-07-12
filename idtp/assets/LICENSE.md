@@ -1,1 +1,8 @@
-Logo design by Poyyara. This graphic is licensed under Creative Commons Attribution 4.0 International (CC BY 4.0). Official license link: <a href="creativecommons.org">creativecommons.org</a>
+# License
+
+Logo design by Poyyara. 
+
+This graphic is licensed under the Creative Commons Attribution 4.0 International License. 
+
+To view a copy of this license, visit:
+https://creativecommons.org
