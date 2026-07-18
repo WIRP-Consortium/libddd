@@ -14,6 +14,7 @@ import time
 import platform
 import re
 import ssl
+import tempfile
 
 from cryptography.fernet import Fernet
 
@@ -59,6 +60,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QMessageBox,
     QLineEdit,
+    QSlider,
     QFileDialog
 )
 from PyQt6.QtWidgets import (
@@ -70,6 +72,15 @@ from PyQt6.QtWidgets import QTextBrowser
 from PyQt6.QtWidgets import QToolButton, QMenu
 from Crypto.PublicKey import RSA
 
+from PyQt6.QtCore import QUrl
+
+from PyQt6.QtMultimedia import (
+    QMediaPlayer,
+    QAudioOutput
+)
+
+from PyQt6.QtMultimediaWidgets import QVideoWidget
+
 PORT = 443
 VERSION = "0.01"
 TYPE = "DATA"
@@ -77,6 +88,7 @@ PORT2 = 443
 
 HOST = "0.0.0.0"
 CLIENT = "WWC SCRUTARI"
+#HOST = "127.0.0.1"
 
 REGISTRY_FILE = os.path.join("data", "registry.dat")
 
@@ -154,7 +166,31 @@ def aes_encrypt(key, iv, data):
     return base64.b64encode(ciphertext).decode()
 
 def parse_response(response):
+
     data = {}
+
+    if response.startswith("IDTP:"):
+
+        lines = response.splitlines()
+
+        if lines:
+            first = lines[0]
+
+            if "/ ERROR" in first:
+                data["TYPE"] = "ERROR"
+
+        for line in lines[1:]:
+            if ":" in line:
+                key, value = line.split(":", 1)
+                data[key.strip()] = value.strip()
+
+        if data.get("TYPE") == "ERROR":
+            print("IDTP ERROR")
+            print("CODE:", data.get("CODE"))
+            print("MESSAGE:", data.get("MESSAGE"))
+
+            return data
+
 
     parts = response.split("|")
 
@@ -164,52 +200,68 @@ def parse_response(response):
 
     encrypted_key_b64, iv_b64, encrypted_data_b64 = parts
 
-    # decrypt AES key
-    aes_key = private_key.decrypt(
-        base64.b64decode(encrypted_key_b64),
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
+
+    try:
+
+        aes_key = private_key.decrypt(
+            base64.b64decode(encrypted_key_b64),
+            padding.OAEP(
+                mgf=padding.MGF1(
+                    algorithm=hashes.SHA256()
+                ),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
         )
-    )
 
-    iv = base64.b64decode(iv_b64)
-    ciphertext = base64.b64decode(encrypted_data_b64)
 
-    aesgcm = AESGCM(aes_key)
+        iv = base64.b64decode(iv_b64)
+        ciphertext = base64.b64decode(encrypted_data_b64)
 
-    plaintext = aesgcm.decrypt(
-        iv,
-        ciphertext,
-        None
-    )
 
-    response = plaintext.decode("utf-8")
+        aesgcm = AESGCM(aes_key)
 
-    if "\nDATA:\n" in response:
-        header, body = response.split("\nDATA:\n",1)
+        plaintext = aesgcm.decrypt(
+            iv,
+            ciphertext,
+            None
+        )
+
+
+    except Exception as e:
+        print("Response decrypt failed:", e)
+        return {}
+
+
+    response_text = plaintext.decode("utf-8")
+
+
+    if "\nDATA:\n" in response_text:
+        header, body = response_text.split(
+            "\nDATA:\n",
+            1
+        )
     else:
-        header = response
+        header = response_text
         body = ""
 
+
     for line in header.splitlines():
+
         if ":" in line:
-            key,value=line.split(":",1)
+            key, value = line.split(":", 1)
             data[key.strip()] = value.strip()
 
+
     data["DATA"] = body.strip()
+
 
     if data.get("TYPE") == "ERROR":
         print("IDTP ERROR")
         print("CODE:", data.get("CODE"))
         print("MESSAGE:", data.get("MESSAGE"))
+        data["MESSAGE"] = body.strip()
 
-        return {
-            "STATUS": "ERROR",
-            "CODE": data.get("CODE"),
-            "MESSAGE": data.get("MESSAGE")
-        }
 
     return data
 
@@ -241,6 +293,9 @@ def try_send(ip, packet):
         )
 
         raw = recv_all(conn)
+
+        print("RAW SERVER RESPONSE LENGTH:", len(raw))
+        print(raw[:200])
 
         conn.close()
 
@@ -353,7 +408,6 @@ def main(name, msg, method):
 
         encrypted_msg = aes_encrypt(aes_key, iv, msg)
 
-            # ---------------- RSA KEY WRAP ----------------
         public_key_txt = result_data.get("public_key", "UNKNOWN")
         public_key_txt = public_key_txt.replace("\\n", "\n").strip()
 
@@ -376,7 +430,6 @@ def main(name, msg, method):
         ich = result_data.get("ich", "UNKNOWN")
         public_key_txt = result_data.get("public_key", "UNKNOWN")
         destination_ip = result_data.get("ip")
-
         timestamp = time.time()
 
         nonce = secrets.token_hex(16)
@@ -525,6 +578,7 @@ class EditApp(QMainWindow):
         forward_button.setMaximumWidth(80)
 
         more_button = QToolButton()
+        #more_button.setText("⋮")
         more_button.setText("More")
 
         menu = QMenu()
@@ -541,8 +595,10 @@ class EditApp(QMainWindow):
         more_button.setMenu(menu)
         more_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
+        #layout.addWidget(label)
         top_layout = QHBoxLayout()
 
+        #top_layout.addWidget(connection)
         top_layout.addWidget(back_button)
         top_layout.addWidget(forward_button)
         top_layout.addWidget(refresh_button)
@@ -574,6 +630,23 @@ class EditApp(QMainWindow):
                 response.get("DATA", ""),
                 name
             )
+
+    def duration_changed(self, duration):
+        self.slider.setRange(0, duration)
+        self.update_time(self.player.position(), duration)
+
+    def position_changed(self, position):
+        self.slider.setValue(position)
+        self.update_time(position, self.player.duration())
+
+    def update_time(self, pos, dur):
+        def fmt(ms):
+            s = ms // 1000
+            m = s // 60
+            s %= 60
+            return f"{m:02}:{s:02}"
+
+        self.time.setText(f"{fmt(pos)} / {fmt(dur)}")
 
     def go_forward(self):
         if not self.forward_history:
@@ -668,6 +741,167 @@ class EditApp(QMainWindow):
             tag = elem.tag.lower()
             value = (elem.text or "").strip()
 
+            if tag == "img":
+
+                src = elem.attrib.get("src")
+
+                if src:
+
+                    print("Loading:", src)
+
+                    img_response = main(
+                        name,
+                        src,
+                        src
+                    )
+
+
+                    if img_response:
+
+                        img_data = img_response.get(
+                            "DATA",
+                            ""
+                        )
+
+
+                        try:
+
+                            image_bytes = base64.b64decode(
+                                img_data
+                            )
+
+                            pixmap = QPixmap()
+
+
+                            if pixmap.loadFromData(
+                                image_bytes
+                            ):
+
+                                label = QLabel()
+
+                                label.setPixmap(
+                                    pixmap.scaled(
+                                        500,
+                                        500,
+                                        Qt.AspectRatioMode.KeepAspectRatio
+                                    )
+                                )
+
+                                self.output_layout.addWidget(
+                                    label
+                                )
+
+
+                        except Exception as e:
+                            print(
+                                "Image error:",
+                                e
+                            )
+
+
+                continue
+
+            if tag == "audio":
+
+                src = elem.attrib.get("src")
+
+                if src:
+
+                    print("Loading:", src)
+
+                    audio_response = main(
+                        name,
+                        src,
+                        src
+                    )
+
+                    if audio_response:
+
+                        audio_data = audio_response.get("DATA", "")
+
+                        try:
+
+                            audio_bytes = base64.b64decode(audio_data)
+
+                            temp = tempfile.NamedTemporaryFile(
+                                delete=False,
+                                suffix=".mp3"
+                            )
+
+                            temp.write(audio_bytes)
+                            temp.close()
+
+                            player = QMediaPlayer(self)
+                            output = QAudioOutput(self)
+                            output.setVolume(1.0)
+
+                            player.setAudioOutput(output)
+                            player.setSource(
+                                 QUrl.fromLocalFile(temp.name)
+                            )
+
+
+                # Controls
+                            play = QPushButton("▶")
+                            pause = QPushButton("⏸")
+                            stop = QPushButton("⏹")
+
+                            slider = QSlider(Qt.Orientation.Horizontal)
+                            slider.setRange(0, 0)
+
+                            time_label = QLabel("00:00 / 00:00")
+
+                            player.durationChanged.connect(
+                                lambda duration: slider.setRange(0, duration)
+                            )
+
+                            player.positionChanged.connect(
+                                lambda position: (
+                                    slider.setValue(position),
+                                    time_label.setText(
+                                        f"{position//60000:02}:{(position//1000)%60:02} / "
+                                        f"{player.duration()//60000:02}:{(player.duration()//1000)%60:02}"
+                                    )
+                                )
+                            )
+
+                            play.clicked.connect(player.play)
+                            pause.clicked.connect(player.pause)
+                            stop.clicked.connect(player.stop)
+
+                            play.setFixedWidth(40)
+                            pause.setFixedWidth(40)
+                            stop.setFixedWidth(40)
+                            slider.setFixedWidth(180)
+                            stop.setFixedWidth(40)
+
+
+                            row = QHBoxLayout()
+                            row.addWidget(play)
+                            row.addWidget(pause)
+                            row.addWidget(stop)
+                            row.addWidget(slider)
+                            row.addWidget(time_label)
+
+                            container = QWidget()
+                            container.setLayout(row)
+
+                            self.output_layout.addWidget(container)
+
+
+                # Keep alive
+                            if not hasattr(self, "players"):
+                                self.players = []
+
+                            self.players.append(
+                                (player, output, temp.name)
+                            )
+
+                        except Exception as e:
+                            print("Audio error:", e)
+
+                continue
+
             if not value:
                 continue
 
@@ -719,7 +953,7 @@ class EditApp(QMainWindow):
                 item = self.output_layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
-
+                    
             data = response.get("DATA", "")
             resor = response.get("RESOURCE", "")
 
@@ -729,12 +963,13 @@ class EditApp(QMainWindow):
 
             ext = Path(resor).suffix.lower().lstrip(".")
 
-            ext = response.get("TYPE", "")
+            ext = response.get("TYPE", "").lower()
 
             print("DETECTED EXT:", ext)
 
             if ext == "smrl":
 
+    # clean root wrapper safely
                 data = data.replace("<smrl>", "").replace("</smrl>", "").strip()
 
                 try:
@@ -745,14 +980,178 @@ class EditApp(QMainWindow):
                 if root is None:
                     return
 
+    # clear layout
                 while self.output_layout.count():
                     item = self.output_layout.takeAt(0)
                     if item.widget():
                         item.widget().deleteLater()
 
+    # read in order as it appears in XML
                 for elem in root:
                     tag = elem.tag.lower()
                     value = (elem.text or "").strip()
+
+                    if tag == "img":
+
+                        src = elem.attrib.get("src")
+
+                        if src:
+
+                            print("Loading:", src)
+
+                            img_response = main(
+                                name,
+                                src,
+                                src
+                            )
+
+
+                            if img_response:
+
+                                img_data = img_response.get(
+                                    "DATA",
+                                    ""
+                                )
+
+
+                                try:
+
+                                    image_bytes = base64.b64decode(
+                                        img_data
+                                    )
+
+                                    pixmap = QPixmap()
+
+
+                                    if pixmap.loadFromData(
+                                        image_bytes
+                                    ):
+
+                                        label = QLabel()
+
+                                        label.setPixmap(
+                                            pixmap.scaled(
+                                                500,
+                                                500,
+                                                Qt.AspectRatioMode.KeepAspectRatio
+                                            )
+                                        )
+
+                                        self.output_layout.addWidget(
+                                            label
+                                        )
+
+
+                                except Exception as e:
+                                    print(
+                                        "Image error:",
+                                        e
+                                    )
+
+                            continue
+
+                    if tag == "audio":
+
+                        src = elem.attrib.get("src")
+
+                        if src:
+
+                            print("Loading:", src)
+
+                            audio_response = main(
+                                name,
+                                src,
+                                src
+                            )
+
+                            if audio_response:
+
+                                audio_data = audio_response.get("DATA", "")
+
+                                try:
+
+                                    audio_bytes = base64.b64decode(audio_data)
+
+                                    temp = tempfile.NamedTemporaryFile(
+                                        delete=False,
+                                        suffix=".mp3"
+                                    )
+
+                                    temp.write(audio_bytes)
+                                    temp.close()
+
+                                    player = QMediaPlayer(self)
+                                    output = QAudioOutput(self)
+                                    output.setVolume(1.0)
+
+                                    player.setAudioOutput(output)
+                                    player.setSource(
+                                        QUrl.fromLocalFile(temp.name)
+                                    )
+
+
+                # Controls
+                                    play = QPushButton("▶")
+                                    pause = QPushButton("⏸")
+                                    stop = QPushButton("⏹")
+
+                                    slider = QSlider(Qt.Orientation.Horizontal)
+                                    slider.setRange(0, 0)
+
+                                    time_label = QLabel("00:00 / 00:00")
+
+                                    player.durationChanged.connect(
+                                        lambda duration: slider.setRange(0, duration)
+                                    )
+
+                                    player.positionChanged.connect(
+                                        lambda position: (
+                                            slider.setValue(position),
+                                            time_label.setText(
+                                                f"{position//60000:02}:{(position//1000)%60:02} / "
+                                                f"{player.duration()//60000:02}:{(player.duration()//1000)%60:02}"
+                                            )
+                                        )
+                                    )
+
+                                    slider.sliderMoved.connect(
+                                        player.setPosition
+                                    )
+
+                                    play.clicked.connect(player.play)
+                                    pause.clicked.connect(player.pause)
+                                    stop.clicked.connect(player.stop)
+
+                                    slider.setFixedWidth(180)
+                                    stop.setFixedWidth(40)
+                                    play.setFixedWidth(40)
+                                    pause.setFixedWidth(40)
+
+                                    row = QHBoxLayout()
+                                    row.addWidget(play)
+                                    row.addWidget(pause)
+                                    row.addWidget(stop)
+                                    row.addWidget(slider)
+                                    row.addWidget(time_label)
+
+                                    container = QWidget()
+                                    container.setLayout(row)
+
+                                    self.output_layout.addWidget(container)
+
+
+                # Keep alive
+                                    if not hasattr(self, "players"):
+                                        self.players = []
+
+                                    self.players.append(
+                                        (player, output, temp.name)
+                                    )
+
+                                except Exception as e:
+                                    print("Audio error:", e)
+
+                        continue
 
                     if not value:
                         continue
@@ -766,6 +1165,25 @@ class EditApp(QMainWindow):
 
                     elif tag == "title":
                         self.title.setText(value)
+
+                    elif tag == "image":
+                        img_data = response.get("DATA", "")
+
+                        image_bytes = base64.b64decode(img_data)
+
+                        pixmap = QPixmap()
+                        pixmap.loadFromData(image_bytes)
+
+                        img_label = QLabel()
+                        img_label.setPixmap(
+                            pixmap.scaled(
+                                500,
+                                500,
+                                Qt.AspectRatioMode.KeepAspectRatio
+                            )
+                        )
+
+                        self.output_layout.addWidget(img_label)
 
                     elif tag == "link":
                         redir = elem.attrib.get("redir")
