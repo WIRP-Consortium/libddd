@@ -543,6 +543,12 @@ def handle_client(conn, addr):
                 if resource == "jpg":
                     with open(route, "rb") as s:
                         content = base64.b64encode(s.read()).decode()
+                elif resource == "mp3":
+                    with open(route, "rb") as f:
+                        content = base64.b64encode(f.read()).decode("utf-8")
+                elif resource == "mp4":
+                    with open(route, "rb") as f:
+                        content = base64.b64encode(f.read()).decode("utf-8")
                 elif resource == "png":
                     with open(route, "rb") as s:
                         content = base64.b64encode(s.read()).decode()
@@ -572,7 +578,7 @@ def handle_client(conn, addr):
                 print("\n----- DATA -----")
                 print(plaintext.decode("utf-8", errors="ignore"))
                 print("Registrant:", registrant)
-  
+
                 response_key = os.urandom(32)
                 response_iv = os.urandom(12)
 
@@ -607,6 +613,7 @@ DATA:
                     + "|"
                     + base64.b64encode(encrypted_response).decode()
                 )
+
                 conn.sendall(packet.encode())
             except Exception as e:
                 print("[!] Decryption error:", e)
