@@ -12,7 +12,6 @@ import secrets
 import requests
 from collections import deque
 
-#
 from cryptography.fernet import Fernet
 from find import get_codes
 from cryptography.hazmat.primitives import hashes
@@ -289,12 +288,9 @@ def get_next_index_file():
 
     return os.path.join(INDEX_DIR, f"index_{next_num}.dat")
 
-# =========================
 # SAVE REGISTRATION
-# =========================
 def is_online():
     try:
-        # Try reaching a reliable site
         requests.get("https://ipwho.is/", timeout=3)
         return True
     except requests.RequestException:
@@ -344,9 +340,6 @@ def save_registration(data):
     country_code, continent_code, ip = get_codes()
 
     entry = data["name"] + data["ext"]
-
-#if local_name_exists(entry):
-#return "EXISTS"
 
     hash64 = generate_64bit_hash(data["name"], data["ext"])
 
@@ -432,9 +425,7 @@ def save_registration(data):
 
     return record
 
-# =========================
 # BROADCAST
-# =========================
 
 def broadcast(data, exclude=None):
 
@@ -459,9 +450,7 @@ def broadcast(data, exclude=None):
         except:
             pass
 
-# =========================
 # PEER DISCOVERY
-# =========================
 
 def peer_discovery():
 
@@ -552,9 +541,7 @@ def merge_registry(raw_registry):
         safe_write(REGISTRY_FILE,
             "\n".join(json.dumps(r) for r in existing)
         )
-# =========================
 # SERVER
-# =========================
 
 def server():
     s = socket.socket()
@@ -588,9 +575,7 @@ def server():
 
             req_type = data.get("type")
 
-            # =========================
             # GET REGISTRY
-            # =========================
             if req_type == "get_registry":
                 try:
                     with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
@@ -601,9 +586,7 @@ def server():
                 client.close()
                 continue
 
-            # =========================
             # PEER REQUEST
-            # =========================
             if req_type == "peer_request":
                 try:
                     client.send(json.dumps(list(PEERS)).encode())
@@ -613,9 +596,7 @@ def server():
                 client.close()
                 continue
 
-            # =========================
             # SYNC
-            # =========================
             if req_type == "sync":
                 try:
                     record = data.get("record")
