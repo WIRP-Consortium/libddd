@@ -69,7 +69,6 @@ from PyQt6.QtGui import (
 )
 
 PORT = 443
-# ------------------ PATHS ------------------
 
 DATA_DIR = os.path.join(
     os.environ["APPDATA"],
@@ -83,7 +82,6 @@ DATA_FILE = "allowed_ips.json"
 REQUEST_FILE = "request.json"
 TRANSACTION_FILE = "data/transaction.json"
 
-# ------------------ LICENSE ------------------
 country_code = None
 continent_code = None
 
@@ -148,7 +146,6 @@ def create_splash():
 
     painter = QPainter(pixmap)
 
-    # ---------------- Logo ----------------
     logo = QPixmap(resource_path("assets/wd3.png"))
     logo = logo.scaled(
         110,
@@ -168,20 +165,17 @@ def create_splash():
 
     painter.drawText(160, 80, "GlobalBytes")
 
-    # ---------------- Subtitle ----------------
     sub_font = QFont("Segoe UI", 11)
     painter.setFont(sub_font)
 
     painter.drawText(160, 110, "World Distributed Data Directory")
 
-    # ---------------- Version ----------------
     version_font = QFont("Segoe UI", 10)
     painter.setFont(version_font)
     painter.setPen(QColor(90, 90, 90))
 
     painter.drawText(160, 135, "Version 0.001")
 
-    # ---------------- Copyright ----------------
     painter.drawText(
         25,
         250,
@@ -213,7 +207,6 @@ def generate_license():
 
 def is_online():
     try:
-        # Try reaching a reliable site
         requests.get("https://ipwho.is/", timeout=3)
         return True
     except requests.RequestException:
@@ -242,7 +235,6 @@ def generate_router_id(continent_code, country_code):
     h = hashlib.sha256(raw.encode()).hexdigest()
 
     return f"{continent_code}:{country_code}:GW:{h[:10]}"
-# ------------------ MAIN APP ------------------
 
 def load_all_data():
     results = []
@@ -424,7 +416,6 @@ class App(QMainWindow):
         self.resize(1280, 720)
         self.setWindowIcon(QIcon(resource_path("assets/wd3.png")))
 
-        # ------------------ MENU ------------------
         menubar = self.menuBar()
 
         file_menu = menubar.addMenu("File")
@@ -449,7 +440,6 @@ class App(QMainWindow):
         help_menu.addAction("About PyQt").triggered.connect(self.about_qt)
         help_menu.addAction("WDDD Motto").triggered.connect(self.motto)
 
-        # ------------------ DATA ------------------
         os.makedirs(DATA_DIR, exist_ok=True)
         generate_license()
 
@@ -491,7 +481,6 @@ class App(QMainWindow):
 
             welcome_text = "Welcome to GlobalBytes (New User)"
 
-        # ------------------ MAIN UI ------------------
         central = QWidget()
         self.setCentralWidget(central)
 
@@ -499,7 +488,7 @@ class App(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # ------------------ SIDEBAR ------------------
+        #  SIDEBAR
         self.nav = QListWidget()
         
         items = [
@@ -509,7 +498,7 @@ class App(QMainWindow):
             ("Network Sync", resource_path("assets/sync.png")),
             ("Data Sync", resource_path("assets/sync.png")),
             ("Stream", resource_path("assets/global.png")),
-            ("About", resource_path("assets/info.png"))   # icon only for About
+            ("About", resource_path("assets/info.png"))  
         ]
 
         for text, icon in items:
@@ -555,7 +544,6 @@ class App(QMainWindow):
             color:black;
         """)
 
-        # ------------------ SIDEBAR CONTAINER ------------------
         sidebar_container = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_container)
         sidebar_layout.setContentsMargins(0, 0, 0, 10)
@@ -567,7 +555,6 @@ class App(QMainWindow):
 # Spacer pushes logo to bottom
         sidebar_layout.addStretch()
 
-# ------------------ BOTTOM LOGO ------------------
         bottom_logo = QLabel()
 
         pixmap = QPixmap(resource_path("assets/wd3.png"))
@@ -582,11 +569,10 @@ class App(QMainWindow):
 
         sidebar_layout.addWidget(bottom_logo)
 
-        # ------------------ STACKED PAGES ------------------
         right_layout = QVBoxLayout()
         self.pages = QStackedWidget()
 
-        # ================= HOME PAGE =================
+        # HOME PAGE
         home_page = QWidget()
         home_layout = QVBoxLayout(home_page)
 
@@ -639,7 +625,6 @@ class App(QMainWindow):
         )
         about_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # ---- ADD WIDGETS (FIXED STRUCTURE) ----
         home_layout.addWidget(logo)
         home_layout.addWidget(title)
         home_layout.addWidget(sub)
@@ -648,7 +633,7 @@ class App(QMainWindow):
         home_layout.addWidget(copy_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         home_layout.addWidget(about_text)
 
-        # ================= SETTINGS PAGE =================
+        # SETTINGS PAGE
         idtp_page = QWidget()
         s_layout = QVBoxLayout(idtp_page)
         s_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -671,7 +656,6 @@ class App(QMainWindow):
         s_layout.addWidget(self.stop_btn)
 
         
-        # ================= ABOUT PAGE =================
         net = psutil.net_io_counters()
 
         sent_label = QLabel(f"Sent: {net.bytes_sent / 1024:.2f} KB")
@@ -807,7 +791,6 @@ class App(QMainWindow):
         allow_btn.clicked.connect(self.create_entry)
 
         self.table = QTableWidget()
-        #receive_layout.addRow("Allowed IP:", self.allowed_ip)
 
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels([
@@ -867,7 +850,6 @@ class App(QMainWindow):
         self.select.addItem("This Month")
         self.select.addItem("This Year")
 
-        #self.select.currentTextChanged.connect(self.changed)
         self.select.currentTextChanged.connect(self.load_transactions)
 
         top_layout = QHBoxLayout()
@@ -885,9 +867,6 @@ class App(QMainWindow):
 
         sync_layout.addWidget(sync_tabs)
 
-        #s_label = QLabel("Node Sync")
-        #s_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        #s_page.addWidget(s_label)
 
         #Status
         stream_page = QWidget()
@@ -997,7 +976,6 @@ IDTP also supports high-traffic servers by using optimized communication methods
         ab_page.addWidget(ab_text)
         #ab_page.addWidget(idtp_text)
 
-        # ------------------ ADD PAGES ------------------
         self.pages.addWidget(home_page)
         self.pages.addWidget(idtp_page)
         self.pages.addWidget(index_page)
@@ -1007,17 +985,14 @@ IDTP also supports high-traffic servers by using optimized communication methods
         self.pages.addWidget(about_page)
 
 
-        # ------------------ NAV SWITCH ------------------
         self.nav.currentRowChanged.connect(self.change_page)
         self.nav.setCurrentRow(0)
 
-        # ------------------ FINAL LAYOUT ------------------
         right_layout.addWidget(self.pages)
 
         main_layout.addWidget(self.nav)
         main_layout.addLayout(right_layout)
 
-    # ------------------ FUNCTIONS ------------------
 
     def create_entry(self):
         import random
@@ -1588,7 +1563,6 @@ def main():
     except Exception as e:
         print("Server error:", e)
 
-# ------------------ START ------------------
 
 if __name__ == "__main__":
 
