@@ -21,8 +21,6 @@ from PyQt6.QtWidgets import (
 
 REGISTRY_FILE = os.path.join("data/registry.dat")
 
-#search_name = input("Enter fullname: ")
-    #manwithuke0b2afe03968aa7bf.rev
 
 class EditApp(QMainWindow):
 
