@@ -36,9 +36,7 @@ from PyQt6.QtWidgets import (
 )
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes, serialization
-# =========================
 # CONFIG
-# =========================
 
 PORT = 9000
 
@@ -78,9 +76,7 @@ EXPIRY = [
     ("10year", 10 * 365 * 24 * 60 * 60),
 ]
 
-# =========================
 # INIT
-# =========================
 registry_lock = threading.Lock()
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(INDEX_DIR, exist_ok=True)
@@ -94,9 +90,7 @@ if not os.path.exists(PEERS_FILE):
 
 if not os.path.exists(BLOCKS_FILE):
     open(BLOCKS_FILE, "w").close()
-# =========================
 # LICENSE
-# =========================
 
 def load_license():
     with open(LICENSE_FILE, "rb") as f:
@@ -184,9 +178,7 @@ def initial_sync():
             continue
 
 
-# =========================
 # PEERS
-# =========================
 
 def load_peers():
 
@@ -229,9 +221,7 @@ def add_peer(host, port):
         PEERS.add(peer)
         save_peers()
 
-# =========================
 # HASH
-# =========================
 
 def generate_64bit_hash(name, ext):
 
@@ -239,9 +229,7 @@ def generate_64bit_hash(name, ext):
 
     return hashlib.sha256(value.encode()).hexdigest()[:32]
 
-# =========================
 # EXPIRY
-# =========================
 
 def get_expiry_seconds(label):
 
@@ -252,9 +240,7 @@ def get_expiry_seconds(label):
 
     return None
 
-# =========================
 # CHECK LOCAL DUPLICATE
-# =========================
 
 def local_name_exists(entry):
 
@@ -281,10 +267,7 @@ def local_name_exists(entry):
 
     return False
 
-# =========================
 # INDEX FILE
-# =========================
-
 def get_next_index_file():
 
     files = os.listdir(INDEX_DIR)
