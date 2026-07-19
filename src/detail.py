@@ -114,9 +114,6 @@ class EditApp(QMainWindow):
             else:
                 self.the_expiry.setText(f"EXPIRE ON ({expiry})")
 
-           #QMessageBox.information(self, "Result", text)
-            #QMessageBox.warning(self, "Result", "No matching file found.")
-
 
 app = QApplication([])
 window = EditApp()
